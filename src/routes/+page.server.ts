@@ -1,5 +1,3 @@
-export async function load({locals}) {
-    return {
-        locals
-    }
+export async function load({ locals }) {
+    return locals
 }

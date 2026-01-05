@@ -21,6 +21,8 @@ export const actions: Actions = {
             }
         })
 
+        const userId = user?.id
+
         if (!user) {
             return fail(400, { error: "Nie poprawny uzytkownik lub haslo" })
         }
@@ -37,6 +39,7 @@ export const actions: Actions = {
         await db.session.create({
             data: {
                 username: String(username),
+                userId: String(userId),
                 session_hash: session_hash
             }
         })

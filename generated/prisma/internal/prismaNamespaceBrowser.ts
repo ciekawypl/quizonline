@@ -52,7 +52,10 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   User: 'User',
-  Session: 'Session'
+  Session: 'Session',
+  Quiz: 'Quiz',
+  Question: 'Question',
+  Answer: 'Answer'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -80,10 +83,41 @@ export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof User
 export const SessionScalarFieldEnum = {
   id: 'id',
   username: 'username',
+  userId: 'userId',
   session_hash: 'session_hash'
 } as const
 
 export type SessionScalarFieldEnum = (typeof SessionScalarFieldEnum)[keyof typeof SessionScalarFieldEnum]
+
+
+export const QuizScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  description: 'description',
+  createdAt: 'createdAt',
+  userId: 'userId'
+} as const
+
+export type QuizScalarFieldEnum = (typeof QuizScalarFieldEnum)[keyof typeof QuizScalarFieldEnum]
+
+
+export const QuestionScalarFieldEnum = {
+  id: 'id',
+  content: 'content',
+  quizId: 'quizId'
+} as const
+
+export type QuestionScalarFieldEnum = (typeof QuestionScalarFieldEnum)[keyof typeof QuestionScalarFieldEnum]
+
+
+export const AnswerScalarFieldEnum = {
+  id: 'id',
+  content: 'content',
+  isCorrect: 'isCorrect',
+  questionId: 'questionId'
+} as const
+
+export type AnswerScalarFieldEnum = (typeof AnswerScalarFieldEnum)[keyof typeof AnswerScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -92,4 +126,12 @@ export const SortOrder = {
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 

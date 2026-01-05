@@ -20,7 +20,7 @@ const config: runtime.GetPrismaClientConfig = {
   "clientVersion": "7.1.0",
   "engineVersion": "ab635e6b9d606fa5c8fb8b1a7f909c3c3c1c98ba",
   "activeProvider": "sqlite",
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider = \"sqlite\"\n}\n\nmodel User {\n  id            Int    @id @default(autoincrement())\n  username      String @unique\n  password_hash String\n}\n\nmodel Session {\n  id           Int    @id @default(autoincrement())\n  username     String\n  session_hash String @unique\n}\n",
+  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../generated/prisma\"\n}\n\ndatasource db {\n  provider = \"sqlite\"\n}\n\nmodel User {\n  id            String @id @default(uuid())\n  username      String @unique\n  password_hash String\n  quizzes       Quiz[]\n}\n\nmodel Session {\n  id           Int    @id @default(autoincrement())\n  username     String\n  userId       String\n  session_hash String @unique\n}\n\nmodel Quiz {\n  id          String     @id @default(uuid())\n  title       String\n  description String?\n  createdAt   DateTime   @default(now())\n  user        User       @relation(fields: [userId], references: [id])\n  userId      String\n  questions   Question[]\n}\n\nmodel Question {\n  id      Int      @id @default(autoincrement())\n  content String\n  quiz    Quiz     @relation(fields: [quizId], references: [id])\n  quizId  String\n  answers Answer[]\n}\n\nmodel Answer {\n  id         Int      @id @default(autoincrement())\n  content    String\n  isCorrect  Boolean  @default(false)\n  question   Question @relation(fields: [questionId], references: [id])\n  questionId Int\n}\n",
   "runtimeDataModel": {
     "models": {},
     "enums": {},
@@ -28,7 +28,7 @@ const config: runtime.GetPrismaClientConfig = {
   }
 }
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"username\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password_hash\",\"kind\":\"scalar\",\"type\":\"String\"}],\"dbName\":null},\"Session\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"username\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"session_hash\",\"kind\":\"scalar\",\"type\":\"String\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"username\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password_hash\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"quizzes\",\"kind\":\"object\",\"type\":\"Quiz\",\"relationName\":\"QuizToUser\"}],\"dbName\":null},\"Session\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"username\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"session_hash\",\"kind\":\"scalar\",\"type\":\"String\"}],\"dbName\":null},\"Quiz\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"title\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"QuizToUser\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"questions\",\"kind\":\"object\",\"type\":\"Question\",\"relationName\":\"QuestionToQuiz\"}],\"dbName\":null},\"Question\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"content\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"quiz\",\"kind\":\"object\",\"type\":\"Quiz\",\"relationName\":\"QuestionToQuiz\"},{\"name\":\"quizId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"answers\",\"kind\":\"object\",\"type\":\"Answer\",\"relationName\":\"AnswerToQuestion\"}],\"dbName\":null},\"Answer\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"content\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"isCorrect\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"question\",\"kind\":\"object\",\"type\":\"Question\",\"relationName\":\"AnswerToQuestion\"},{\"name\":\"questionId\",\"kind\":\"scalar\",\"type\":\"Int\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
 
 async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Module> {
   const { Buffer } = await import('node:buffer')
@@ -193,6 +193,36 @@ export interface PrismaClient<
     * ```
     */
   get session(): Prisma.SessionDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.quiz`: Exposes CRUD operations for the **Quiz** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Quizzes
+    * const quizzes = await prisma.quiz.findMany()
+    * ```
+    */
+  get quiz(): Prisma.QuizDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.question`: Exposes CRUD operations for the **Question** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Questions
+    * const questions = await prisma.question.findMany()
+    * ```
+    */
+  get question(): Prisma.QuestionDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.answer`: Exposes CRUD operations for the **Answer** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Answers
+    * const answers = await prisma.answer.findMany()
+    * ```
+    */
+  get answer(): Prisma.AnswerDelegate<ExtArgs, { omit: OmitOpts }>;
 }
 
 export function getPrismaClientClass(): PrismaClientConstructor {

@@ -8,7 +8,11 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 		interface Locals {
-			user: { name: string } | null;
+			user: {
+				username: String,
+				userId: String,
+				sessionId: Int
+			} | null;
 		}
 
 	}

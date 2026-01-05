@@ -1,9 +1,9 @@
 import db from '$lib/server/db'
-import { redirect } from '@sveltejs/kit'
+import { redirect, type Actions } from '@sveltejs/kit'
 import { createHash } from 'crypto'
 
-export const actions = {
-    async default({ cookies }) {
+export const actions: Actions = {
+    default: async ({ cookies }) => {
         const session_id = cookies.get('session')
 
         if (session_id) {
@@ -15,7 +15,7 @@ export const actions = {
 
             cookies.delete('session', { path: "/" })
         }
-        
-        redirect(302, '/login')
+
+        redirect(302, '/')
     }
-}
+};

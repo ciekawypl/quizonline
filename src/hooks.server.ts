@@ -11,14 +11,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     const session_hash = createHash('sha256').update(session_id).digest('hex')
 
-    const user = await db.session.findUnique({
-        where: {session_hash: session_hash}, 
-        select: {username: true}
+    const session = await db.session.findUnique({
+        where: { session_hash: session_hash },
+        select: { username: true, userId: true, id: true }
     })
 
-    if (user) {
+    if (session) {
         event.locals.user = {
-            name: user.username
+            username: session.username,
+            userId: session.userId,
+            sessionId: session.id
         }
     }
 

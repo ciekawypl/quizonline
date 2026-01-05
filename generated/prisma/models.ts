@@ -10,4 +10,7 @@
  */
 export type * from './models/User.ts'
 export type * from './models/Session.ts'
+export type * from './models/Quiz.ts'
+export type * from './models/Question.ts'
+export type * from './models/Answer.ts'
 export type * from './commonInputTypes.ts'
