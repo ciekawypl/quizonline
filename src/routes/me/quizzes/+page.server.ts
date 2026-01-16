@@ -4,10 +4,10 @@ import db from "$lib/server/db.js";
 
 export const load: PageServerLoad = async ({ locals }) => {
     const quizzes = await db.quiz.findMany({
-        where: {userId: String(locals.user?.userId)},
+        where: { userId: String(locals.user?.userId) },
     })
 
-    return locals
+    return { quizzes, locals }
 }
 
 export const actions: Actions = {
