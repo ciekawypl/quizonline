@@ -10,9 +10,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
     if (quiz?.userId != locals.user?.userId) {
         error(403, "nie da ciebie")
     }
-
-
-    return { quiz, locals }
 }
 
 export const actions: Actions = {
@@ -30,17 +27,25 @@ export const actions: Actions = {
         redirect(303, "/me/quizzes/" + question.quizId + "/" + question.id)
     },
 
-    editQuiz: async ({request, params}) => {
+    editQuiz: async ({ request, params }) => {
         const data = await request.formData()
         const newTitle = data.get('title')
         const newDescription = data.get('description')
 
         await db.quiz.update({
-            where: {id: params.quiz}, 
+            where: { id: params.quiz },
             data: {
                 title: String(newTitle),
                 description: String(newDescription)
             }
         })
+    },
+
+    deleteQuiz: async ({ params }) => {
+        await db.quiz.delete({
+            where: {id: String(params.quiz)}
+        })
+
+        redirect(302, "/me/quizzes")
     }
 };

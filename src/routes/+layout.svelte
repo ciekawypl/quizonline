@@ -1,6 +1,5 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
-	import { enhance } from '$app/forms';
 
 	let { data, children } = $props();
 	let user = $derived(data.user);

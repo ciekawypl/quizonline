@@ -1,4 +1,4 @@
-import type { Handle } from '@sveltejs/kit'
+import { redirect, type Handle } from '@sveltejs/kit'
 import db from '$lib/server/db'
 import { createHash } from 'crypto'
 
@@ -6,6 +6,9 @@ export const handle: Handle = async ({ event, resolve }) => {
     const session_id = event.cookies.get('session')
 
     if (!session_id) {
+        if (event.url.pathname.startsWith('/me')) {
+            throw redirect(302, "/login")
+        }
         return await resolve(event)
     }
 

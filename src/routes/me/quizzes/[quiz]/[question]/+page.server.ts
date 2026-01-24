@@ -1,18 +1,6 @@
 import db from "$lib/server/db";
 import { redirect } from "@sveltejs/kit";
-import type { Actions, PageServerLoad } from "./$types";
-
-export const load: PageServerLoad = async ({ params }) => {
-    const question = await db.question.findUnique({
-        where: { id: Number(params.question) }
-    })
-
-    const answers = await db.answer.findMany({
-        where: { questionId: question?.id }
-    })
-
-    return { question, answers }
-};
+import type { Actions } from "./$types";
 
 export const actions: Actions = {
     editQuestion: async ({ request, params }) => {
@@ -42,6 +30,7 @@ export const actions: Actions = {
     newAnswer: async ({ request, params }) => {
         const data = await request.formData()
         const newContent = data.get('content')
+        const newIsCorrect = data.get('isCorrect')
 
         const question = await db.question.findUnique({
             where: { id: Number(params.question) }
@@ -50,6 +39,7 @@ export const actions: Actions = {
         await db.answer.create({
             data: {
                 content: String(newContent),
+                isCorrect: Boolean(newIsCorrect),
                 questionId: question!.id
             }
         })

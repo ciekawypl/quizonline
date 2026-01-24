@@ -1,5 +1,5 @@
-import { fail, redirect, type Actions } from "@sveltejs/kit";
-import type { PageServerLoad } from "../../$types.js";
+import { fail, redirect } from "@sveltejs/kit";
+import type { Actions, PageServerLoad } from "./$types.js";
 import db from "$lib/server/db.js";
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -7,7 +7,7 @@ export const load: PageServerLoad = async ({ locals }) => {
         where: { userId: String(locals.user?.userId) },
     })
 
-    return { quizzes, locals }
+    return { quizzes }
 }
 
 export const actions: Actions = {

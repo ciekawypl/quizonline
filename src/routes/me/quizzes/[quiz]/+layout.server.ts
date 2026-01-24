@@ -12,8 +12,8 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
     }
 
     const questions = await db.question.findMany({
-        where: {quizId: quiz?.id}
+        where: { quizId: quiz?.id }
     })
 
-    return { questions, quiz, locals }
+    return { quiz, questions }
 }
