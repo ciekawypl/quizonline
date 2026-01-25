@@ -1,21 +1,56 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import type { ActionData } from './$types';
+	import type { PageProps } from './$types';
 
-	export let form: ActionData;
+	let { form } : PageProps = $props()
 </script>
 
 <h1>Login page</h1>
 
 <article>
 	<form action="?/login" method="POST" use:enhance>
-		<input name="username" type="text" placeholder="login"/>
-		<input name="password" type="password" placeholder="password"/>
-		<button type="submit">Log in</button>
-		<button type="submit" formaction="?/register">Register</button>
+		<fieldset>
+			<label>
+				Login
+				{#if form?.usernameError}
+					<input
+						name="username"
+						type="text"
+						aria-invalid="true"
+						value={form.usernameError.username}
+					/>
+					<small>{form.usernameError.error}</small>
+				{:else if form?.globalError}
+					<input
+						name="username"
+						type="text"
+						aria-invalid="true"
+						value={form.globalError.username}
+					/>
+					<small>{form.globalError.error}</small>
+					{:else if form?.passwordError}
+					<input name="username" type="text" value="{form.passwordError.username}"/>
+
+				{:else}
+					<input name="username" type="text" />
+				{/if}
+			</label>
+			<label>
+				Hasło
+				{#if form?.passwordError}
+					<input name="password" type="password" aria-invalid="true" />
+					<small>{form.passwordError.error}</small>
+				{:else if form?.globalError}
+					<input name="password" type="password" aria-invalid="true" />
+					<small>{form.globalError.error}</small>
+				{:else}
+					<input name="password" type="password" />
+				{/if}
+			</label>
+		</fieldset>
+		<div class="grid">
+			<button type="submit">Log in</button>
+			<button class="secondary" type="submit" formaction="?/register">Register</button>
+		</div>
 	</form>
 </article>
-
-{#if form?.error}
-	<p>{form.error}</p>
-{/if}

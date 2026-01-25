@@ -9,13 +9,16 @@ declare global {
 		// interface Platform {}
 		interface Locals {
 			user: {
-				username: String,
 				userId: String,
 				sessionId: Int
 			} | null;
 		}
 
 	}
+	type FormError = {
+		content: String
+		error: String
+	} | null
 }
 
 export { };

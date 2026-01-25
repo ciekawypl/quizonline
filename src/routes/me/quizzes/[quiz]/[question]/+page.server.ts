@@ -1,11 +1,32 @@
 import db from "$lib/server/db";
-import { redirect } from "@sveltejs/kit";
-import type { Actions } from "./$types";
+import { error, fail, redirect } from "@sveltejs/kit";
+import type { Actions, PageServerLoad } from "./$types";
+
+export const load: PageServerLoad = async ({ params, locals }) => {
+    const quiz = await db.quiz.findUnique({
+        where: { id: params.quiz },
+        include: { questions: { where: { id: Number(params.question) }, include: { answers: {} } } }
+    })
+
+    if (quiz?.userId != locals.user?.userId)
+        error(403, "Brak dostępu do zasobu")
+
+    const question = quiz?.questions[0]
+
+    if (!question)
+        error(404, "Zasób nie istnieje")
+};
 
 export const actions: Actions = {
     editQuestion: async ({ request, params }) => {
         const data = await request.formData()
-        const newContent = data.get('content')
+        const newContent = data.get('content')?.toString().trim()
+
+        if (!newContent || newContent == "")
+            return fail(400, { contentError: { newContent, error: "Pole jest wymagane" } })
+
+        if (newContent.toString().length > 256)
+            return fail(400, { contentError: { newContent, error: "Treść jest zbyt długa" } })
 
         await db.question.update({
             where: { id: Number(params.question) },
@@ -13,6 +34,8 @@ export const actions: Actions = {
                 content: String(newContent)
             }
         })
+
+        return { success: true }
     },
 
     deleteQuestion: async ({ params }) => {
@@ -29,19 +52,23 @@ export const actions: Actions = {
 
     newAnswer: async ({ request, params }) => {
         const data = await request.formData()
-        const newContent = data.get('content')
+        const newContent = data.get('content')?.toString().trim()
         const newIsCorrect = data.get('isCorrect')
 
-        const question = await db.question.findUnique({
-            where: { id: Number(params.question) }
-        })
+        if (!newContent || newContent == "")
+            return fail(400, { contentError: { newContent, error: "Pole jest wymagane" } })
 
-        await db.answer.create({
+        if (newContent.toString().length > 256)
+            return fail(400, { contentError: { newContent, error: "Treść jest zbyt długa" } })
+
+        const answer = await db.answer.create({
             data: {
                 content: String(newContent),
                 isCorrect: Boolean(newIsCorrect),
-                questionId: question!.id
+                questionId: Number(params.question),
             }
         })
+
+        redirect(302, "/me/quizzes/" + params.quiz + "/" + params.question + "/" + answer.id)
     }
 };

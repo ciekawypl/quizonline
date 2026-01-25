@@ -13,11 +13,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 export const actions: Actions = {
     newQuiz: async ({ request, locals }) => {
         const data = await request.formData()
-        const quizName = data.get('quizName')
+        const quizName = data.get('quizName')?.toString().trim()
 
-        if (!quizName || quizName == "") {
-            return fail(400, { error: "Nie poprawna nazwa quizu!" })
-        }
+        if (!quizName || quizName == "")
+            return fail(400, { errorBlank: "Pole jest wymagane!" })
+
+        if (quizName.toString().length > 64)
+            return fail(400, { quizName, errorTooLong: "Tytuł jest zbyt długi!" })
 
         const quiz = await db.quiz.create({
             data: {

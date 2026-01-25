@@ -7,7 +7,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     if (!session_id) {
         if (event.url.pathname.startsWith('/me')) {
-            throw redirect(302, "/login")
+            throw redirect(401, "/login")
         }
         return await resolve(event)
     }
@@ -16,12 +16,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     const session = await db.session.findUnique({
         where: { session_hash: session_hash },
-        select: { username: true, userId: true, id: true }
+        select: { userId: true, id: true }
     })
 
     if (session) {
         event.locals.user = {
-            username: session.username,
             userId: session.userId,
             sessionId: session.id
         }

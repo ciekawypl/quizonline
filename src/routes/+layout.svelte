@@ -12,15 +12,15 @@
 <header>
 	<nav>
 		<ul>
-			<li><a href="/"><strong>Home</strong></a></li>
+			<li><a href="/"><strong>Quizonline</strong></a></li>
 			{#if user}
-				<li><a href="/me/quizzes">Your quizzes</a></li>
+				<li><a href="/me/quizzes">Twoje quizy</a></li>
 			{/if}
 		</ul>
 		<ul>
 			{#if user}
 				<form method="post" action="/logout">
-					<button class="outline">Logout</button>
+					<button class="outline">Wyloguj</button>
 				</form>
 			{:else}
 				<a href="/login">
