@@ -7,7 +7,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     if (!session_id) {
         if (event.url.pathname.startsWith('/me')) {
-            throw redirect(401, "/login")
+            throw redirect(301, "/login")
         }
         return await resolve(event)
     }
