@@ -13,12 +13,28 @@ declare global {
 				sessionId: Int
 			} | null;
 		}
-
 	}
 	type FormError = {
 		content: String
 		error: String
 	} | null
+	type Room = {
+		id: string
+		quizId: string
+		hostId: string
+		players: string[]
+		status:
+		| "open"
+		| "closed"
+	} | undefined
+	type ClientMessage =
+		| { type: "createRoom", quizId: string }
+		| { type: "closeRoom", roomId: string }
+		| { type: "joinRoom", roomId: string }
+		| { type: "leaveRoom", roomId: string }
+	type ServerMessage =
+		| { type: "roomState", room: Room }
+		| { type: "error", error: string }
 }
 
 export { };

@@ -19,7 +19,8 @@
 					{/if}
 				</hgroup>
 				<li>
-					<a role="button" href="/me/quizzes/{quiz.id}"> Edytuj -> </a>
+					<a class="secondary" role="button" href="/me/quizzes/{quiz.id}"> Edytuj </a>
+					<a role="button" href="/me/play/{quiz.id}/config"> Rozpocznij -> </a>
 				</li>
 			</nav>
 		{/each}
