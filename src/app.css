@@ -1,0 +1,60 @@
+@import url("https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.orange.min.css");
+
+@media (min-width: 768px) {
+    .grid-1-2 {
+        grid-template-columns: 1fr 2fr;
+    }
+
+    .grid-1-4-1 {
+        grid-template-columns: 1fr 4fr 1fr;
+    }
+
+    .dual:has(> :nth-child(2)) {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .dual> :last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+}
+
+.dual {
+    display: grid;
+    grid-template-columns: 1fr;
+    row-gap: 0;
+}
+
+.red {
+    color: #D93526;
+    border-color: #D93526;
+}
+
+article {
+    padding-bottom: 0px;
+}
+
+.keepPadding {
+    padding: var(--pico-block-spacing-vertical) var(--pico-block-spacing-horizontal);
+}
+
+.fatSeparator {
+    margin: calc(var(--pico-typography-spacing-vertical) * 2) 0
+}
+
+.centerSwitch {
+    display: flex;
+    align-items: center;
+    background-color: var(--pico-form-element-background-color);
+    border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+    border-radius: var(--pico-border-radius);
+}
+
+.centerSwitch> :first-child {
+    margin-left: 0.5em;
+}
+
+.centerSwitch> :first-child:checked {
+    background-color: #47A417;
+    border-color: #47A417;
+    accent-color: red;
+}

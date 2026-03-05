@@ -1,5 +1,6 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
+	import '../app.css'
 
 	let { data, children } = $props();
 	let user = $derived(data.user);
