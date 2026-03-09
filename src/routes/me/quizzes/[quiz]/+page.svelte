@@ -5,9 +5,9 @@
     let { data }: PageProps = $props();
 </script>
 
-<h1>Edytuj Quiz</h1>
 
 <article>
+	<h1>Edytuj Quiz</h1>
 	<form
 		method="post"
 		action="?/editQuiz"

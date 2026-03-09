@@ -184,9 +184,6 @@ export const actions: Actions = {
         const data = await request.formData()
         const answerId = data.get('answerId')?.toString().trim()
 
-        console.log(data);
-
-
         if (!answerId || answerId == "")
             return fail(400, "Nie poprawne zapytanie")
 
@@ -243,7 +240,5 @@ export const actions: Actions = {
                 isCorrect: Boolean(isCorrect)
             }
         })
-        console.log("hit");
-
     }
 };

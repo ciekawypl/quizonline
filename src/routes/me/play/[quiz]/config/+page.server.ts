@@ -70,7 +70,6 @@ export const actions: Actions = {
 
         if (quizStyle == "timeBased") {
             if (!Number.isInteger(time) || time < 1 || time > 1800) {
-                console.log("hit")
                 return fail(400, { timeError: { time, error: "Nie poprawny czas" } })
             }
         }
