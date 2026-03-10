@@ -2,12 +2,25 @@
 	import { browser } from "$app/environment";
 	import { onDestroy, onMount } from "svelte";
 	import type { PageProps } from "./$types";
+	import { enhance } from "$app/forms";
 
-    let { params }: PageProps = $props()
+    let { params, data, form }: PageProps = $props()
+
+	let room : Room = $state()
+    let error: String|null = $state(null)
 
     let ws: WebSocket | null = null
 
-	let room : Room = $state()
+    $effect(() => {
+        if(form?.validName) {
+            send({
+                type:"joinRoom",
+                roomId: params.room,
+                nickname: form.validName
+            })
+            
+        }
+    })
 
     onMount(() => {
         if (!browser) return;
@@ -16,7 +29,7 @@
 
         ws.onopen = () => {
             send({
-                type: "joinRoom",
+                type: "checkForRoom",
                 roomId: params.room
             })
         }
@@ -29,6 +42,10 @@
 					room = message.room
 					break;
 				}
+                case "error": {
+                    error = message.error
+                    break;
+                }
 			}
 		}
     })
@@ -46,9 +63,29 @@
 	}
 </script>
 
-{#if room}
-	witamy w {room.id} <br>
-    status: {room.status}
-{:else}
-	pusto
+{#if error}
+	{error}
+{:else if !room}
+	<article>
+		<h2>Wpisz swoje imię</h2>
+		<form action="?/setName" method="post" use:enhance>
+			<fieldset>
+				<input
+					placeholder="Imię"
+					name="nickname"
+					type="text"
+					value={data.username}
+					aria-invalid={form?.error ? 'true' : 'grammar'}
+				/>
+				{#if form?.error}
+					<small>{form.error}</small>
+				{/if}
+			</fieldset>
+			<button type="submit">Przejdż dalej -></button>
+		</form>
+	</article>
+{:else if room.status == 'waiting'}
+	czekamy
+{:else if room.status == 'closed'}
+	Pokój został zamknięty
 {/if}

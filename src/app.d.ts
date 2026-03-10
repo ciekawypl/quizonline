@@ -22,16 +22,22 @@ declare global {
 		id: string
 		quizId: string
 		hostId: string
-		players: string[]
+		players: Player[]
 		status:
-		| "open"
+		| "waiting"
+		| "started"
 		| "closed"
 	} | undefined
+	type Player = {
+		id: string
+		nickname: string
+	}
 	type ClientMessage =
 		| { type: "createRoom", quizId: string }
 		| { type: "closeRoom", roomId: string }
-		| { type: "joinRoom", roomId: string }
+		| { type: "joinRoom", roomId: string, nickname: string }
 		| { type: "leaveRoom", roomId: string }
+		| { type: "checkForRoom", roomId: string }
 	type ServerMessage =
 		| { type: "roomState", room: Room }
 		| { type: "error", error: string }

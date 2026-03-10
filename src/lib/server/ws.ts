@@ -62,8 +62,8 @@ function updateRoom(roomId: string, onlyToHost = false) {
 
     if (onlyToHost) return;
 
-    room.players.forEach((playerId) => {
-        send(playerId, {
+    room.players.forEach((player) => {
+        send(player.id, {
             type: "roomState",
             room: room
         })
@@ -81,7 +81,7 @@ async function createRoom(connection: WSConnection, quizId: string) {
         quizId: quizId,
         hostId: connection.id,
         players: [],
-        status: "open"
+        status: "waiting"
     }
 
     rooms.set(roomId, room)
@@ -104,7 +104,13 @@ async function closeRoom(connection: WSConnection, roomId: string) {
     rooms.delete(roomId)
 }
 
-function joinRoom(connection: WSConnection, roomId: string) {
+function checkForRoom(connection: WSConnection, roomId: string) {
+    const room = rooms.get(roomId)
+
+    if (!room) sendError(connection, "Nie znaleziono pokoju")
+}
+
+function joinRoom(connection: WSConnection, roomId: string, nickname: string) {
     const room = rooms.get(roomId)
 
     if (!room) {
@@ -112,7 +118,10 @@ function joinRoom(connection: WSConnection, roomId: string) {
         return
     }
 
-    room.players.push(connection.id)
+    room.players.push({
+        id: connection.id,
+        nickname: nickname
+    })
     allConnections.add(connection.id)
 
     updateRoom(roomId)
@@ -125,18 +134,18 @@ function leaveRoom(connection: WSConnection, roomId: string) {
         return
     }
 
-    fastRemove(room.players, room.players.indexOf(connection.id))
+    fastRemove(room.players, room.players.findIndex(player => player.id === connection.id))
     allConnections.delete(connection.id)
 
     updateRoom(roomId)
 }
 
-function sendError(connection: WSConnection, data?: any) {
-    console.log(data);
-    getWebSocketManager().send(connection.id, {
+function sendError(connection: WSConnection, error: string) {
+    const wsMessage = {
         type: "error",
-        data: data
-    })
+        error: error
+    } as unknown as WSMessage
+    getWebSocketManager().send(connection.id, wsMessage)
 }
 
 const ws = webSocketServer({
@@ -154,8 +163,12 @@ const ws = webSocketServer({
                     closeRoom(connection, clientMessage.roomId)
                     break
                 }
+                case "checkForRoom": {
+                    checkForRoom(connection, clientMessage.roomId)
+                    break
+                }
                 case "joinRoom": {
-                    joinRoom(connection, clientMessage.roomId)
+                    joinRoom(connection, clientMessage.roomId, clientMessage.nickname)
                     break
                 }
                 case "leaveRoom": {
@@ -170,8 +183,8 @@ const ws = webSocketServer({
                 rooms.forEach(room => {
                     if (room?.hostId === connection.id) closeRoom(connection, room.id)
 
-                    room?.players.forEach(playerId => {
-                        if (playerId === connection.id) leaveRoom(connection, room.id)
+                    room?.players.forEach(player => {
+                        if (player.id === connection.id) leaveRoom(connection, room.id)
                     });
                 });
             }

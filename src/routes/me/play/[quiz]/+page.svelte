@@ -54,6 +54,6 @@
 	<h2>{room.id}</h2>
 
 	{#each room.players as player}
-		<p>{player}</p>
+		<p>{player.nickname}</p>
 	{/each}
 {/if}
