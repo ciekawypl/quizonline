@@ -74,6 +74,6 @@ export const actions: Actions = {
             }
         }
 
-        redirect(302, "/me/play/" + quiz.id)
+        redirect(302, "/me/host/" + quiz.id)
     }
 };

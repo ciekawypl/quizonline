@@ -20,9 +20,9 @@ declare global {
 	} | null
 	type Room = {
 		id: string
-		quizId: string
 		hostId: string
 		players: Player[]
+		quiz: QuizLite
 		status:
 		| "waiting"
 		| "started"
@@ -31,16 +31,42 @@ declare global {
 	type Player = {
 		id: string
 		nickname: string
+		status: PlayerStatus
+		progress_count: number
 	}
+	type PlayerStatus =
+		| "waiting"
+		| "started"
+		| "ended"
+		| "left"
 	type ClientMessage =
 		| { type: "createRoom", quizId: string }
 		| { type: "closeRoom", roomId: string }
 		| { type: "joinRoom", roomId: string, nickname: string }
 		| { type: "leaveRoom", roomId: string }
 		| { type: "checkForRoom", roomId: string }
+		| { type: "startRoom", roomId: string }
+		| { type: "stopRoom", roomId: string }
+		| { type: "progressUpdate", roomId: string }
+		| { type: "statusUpdate", roomId: string, status: PlayerStatus }
 	type ServerMessage =
 		| { type: "roomState", room: Room }
 		| { type: "error", error: string }
+	type QuizLite = {
+		id: string
+		title: string
+		questions: QuestionLite[]
+	} | null
+	type QuestionLite = {
+		id: number
+		content: string
+		answers: AnswerLite[]
+	}
+	type AnswerLite = {
+		id: number
+		content: string
+		checked?: boolean
+	}
 }
 
 export { };

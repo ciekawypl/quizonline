@@ -75,10 +75,30 @@ async function createRoom(connection: WSConnection, quizId: string) {
 
     allConnections.add(connection.id)
 
+    const quizLite: QuizLite = await db.quiz.findUnique({
+        where: { id: quizId },
+        select: {
+            id: true,
+            title: true,
+            questions: {
+                select: {
+                    id: true,
+                    content: true,
+                    answers: {
+                        select: {
+                            id: true,
+                            content: true
+                        }
+                    }
+                }
+            }
+        }
+    })
+
     const roomId = randomInt(100000, 999999).toString()
     const room: Room = {
         id: roomId,
-        quizId: quizId,
+        quiz: quizLite,
         hostId: connection.id,
         players: [],
         status: "waiting"
@@ -93,7 +113,7 @@ async function closeRoom(connection: WSConnection, roomId: string) {
     const room = rooms.get(roomId)
     if (!room) return
 
-    if (!await isHostSecure(connection, room.quizId)) return
+    if (!await isHostSecure(connection, room.quiz!.id)) return
 
     allConnections.delete(connection.id)
 
@@ -118,9 +138,15 @@ function joinRoom(connection: WSConnection, roomId: string, nickname: string) {
         return
     }
 
+    if (room.status == "closed") {
+        sendError(connection, "Quiz już się zakończył")
+    }
+
     room.players.push({
         id: connection.id,
-        nickname: nickname
+        nickname: nickname,
+        status: "waiting",
+        progress_count: 0
     })
     allConnections.add(connection.id)
 
@@ -136,6 +162,63 @@ function leaveRoom(connection: WSConnection, roomId: string) {
 
     fastRemove(room.players, room.players.findIndex(player => player.id === connection.id))
     allConnections.delete(connection.id)
+
+    updateRoom(roomId)
+}
+
+function progressUpdate(connection: WSConnection, roomId: string) {
+    const room = rooms.get(roomId)
+    if (!room) return
+
+    const player = room.players.find(player => player.id === connection.id)
+
+    if (!player) return sendError(connection, "Gracz nie nalezy do pokoju")
+
+    player.progress_count++
+    updateRoom(roomId, true)
+}
+
+function statusUpdate(connection: WSConnection, roomId: string, status: PlayerStatus) {
+    const room = rooms.get(roomId)
+    if (!room) return
+
+    const player = room.players.find(player => player.id === connection.id)
+
+    if (!player) return sendError(connection, "Gracz nie nalezy do pokoju")
+
+    player.status = status
+
+    updateRoom(roomId, true)
+}
+
+async function startRoom(connection: WSConnection, roomId: string) {
+    const room = rooms.get(roomId)
+    if (!room) return
+
+    if (!await isHostSecure(connection, room.quiz!.id)) return
+
+    if (room.status != "waiting") {
+        sendError(connection, "Nie mozna teraz rozpoczac quizu")
+        return
+    }
+
+    room.status = "started"
+
+    updateRoom(roomId)
+}
+
+async function stopRoom(connection: WSConnection, roomId: string) {
+    const room = rooms.get(roomId)
+    if (!room) return
+
+    if (!await isHostSecure(connection, room.quiz!.id)) return
+
+    if (room.status == "closed") {
+        sendError(connection, "Nie mozna teraz zatrzymać quizu")
+        return
+    }
+
+    room.status = "closed"
 
     updateRoom(roomId)
 }
@@ -173,6 +256,22 @@ const ws = webSocketServer({
                 }
                 case "leaveRoom": {
                     leaveRoom(connection, clientMessage.roomId)
+                    break
+                }
+                case "startRoom": {
+                    startRoom(connection, clientMessage.roomId)
+                    break
+                }
+                case "stopRoom": {
+                    stopRoom(connection, clientMessage.roomId)
+                    break
+                }
+                case "progressUpdate": {
+                    progressUpdate(connection, clientMessage.roomId)
+                    break
+                }
+                case "statusUpdate": {
+                    statusUpdate(connection, clientMessage.roomId, clientMessage.status)
                     break
                 }
             }
