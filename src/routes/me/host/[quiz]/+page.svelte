@@ -2,12 +2,23 @@
 	import { onDestroy, onMount } from "svelte";
 	import { browser } from "$app/environment";
 	import type { PageProps } from "./$types";
+	import { SvelteMap } from "svelte/reactivity";
+	import { beforeNavigate } from "$app/navigation";
 
 	let { params }: PageProps = $props()
 
     let ws: WebSocket | null = null
 
-	let room : Room = $state()
+	let roomId: string | undefined = $state()
+	let roomStatus: RoomStatus = $state()
+	let players: Player[] = $state([])
+	let quizLength = $state()
+	
+	beforeNavigate(({ cancel }) => {
+		if (roomStatus != "closed" && !confirm('Twoj quiz nie został zakończony. Wyniki nie zostaną zapisane. Czy na pewno chcesz wyjść?')) {
+			cancel();
+		}
+  	});
 
 	onMount(() => {
 		if (!browser) return;
@@ -25,9 +36,42 @@
 			const message : ServerMessage = JSON.parse(event.data);
 
 			switch (message.type) {
-				case "roomState": {
-					room = message.room
-					break;
+				case "roomCreated": {
+					roomStatus = "waiting"
+					roomId = message.roomId
+					quizLength = message.quizLength
+					break
+				}
+				case "roomStarted": {
+					roomStatus = "started"
+					break
+				}
+				case "roomStopped" : {
+					roomStatus = "closed"
+					break
+				}
+				case "playerJoined": {
+					const player: Player = {
+						id: message.playerId,
+						nickname: message.nickname,
+						status: message.playerStatus,
+						solutions: new SvelteMap()
+					}
+					players.push(player)
+					break
+				}
+				case "playerProgressUpdate": {
+					const player = players.find(player => player.id === message.playerId)
+					if (player) player.solutions.set(message.questionId, "")
+					break
+				}
+				case "playerStatusUpdate": {
+					const player = players.find(player => player.id === message.playerId)
+					if (player) player.status = message.status
+					break
+				}
+				case "error": {
+					break
 				}
 			}
 		}
@@ -37,10 +81,10 @@
 	});
 	
 	onDestroy(() => {
-		if (!room) return
+		if (!roomId) return
 		send({
 			type: "closeRoom",
-			roomId: room?.id
+			roomId: roomId
 		})
 		ws?.close();
 	});
@@ -50,56 +94,80 @@
 	}
 
 	function startQuiz() {
-		if (!room) return
+		if (!roomId) return
 
 		send({
 			type: "startRoom",
-			roomId: room.id
+			roomId: roomId
 		})
 	}
 
 	function stopQuiz() {
-		if (!room) return
+		if (!roomId) return
 		
+		let someoneStillPlaying = false
+		for (let i = 0; i < players.length; i++) {
+			if (players[i].status === "started") {
+				someoneStillPlaying = true
+				break
+			}
+		}
+
+		if (someoneStillPlaying) {
+			if (!window.confirm("Nie wszyscy jeszcze ukończyli, czy na pewno chcesz zakończyć quiz?")) {
+				return
+			}
+		}
+
 		send({
 			type: "stopRoom",
-			roomId: room.id
+			roomId: roomId
 		})
+	}
+
+	function kickPlayer(playerId: string) {
+		if (!roomId) return
+
+		send({
+			type: "kickPlayer",
+			roomId: roomId,
+			playerId: playerId
+		})
+
+		const index = players.findIndex(player => player.id === playerId)
+		const lastIndex = players.length - 1;
+		if (index < lastIndex) {
+			players[index] = players[lastIndex];
+		}
+		players.pop();
 	}
 </script>
 
-{#if room}
-	<!-- <center class="fatSeparator">
-		<hgroup>
-			<h1>{room.id}</h1>
-			<p>Kod twojego quizu</p>
-		</hgroup>
-	</center> -->
-
+{#if roomId}
 	<div class="grid">
 		<article class="tall centered">
 			<hgroup style="margin: 0;">
-				<h1>{room.id}</h1>
+				<h1>{roomId}</h1>
 				<p>Kod twojego quizu</p>
 			</hgroup>
 		</article>
 		<article class="keepPadding">
 			<div class="tall centered">
 				<hgroup style="margin: 0">
-					{#if room.status == 'waiting'}
+					{#if roomStatus == 'waiting'}
 						<h2>Poczekalnia</h2>
 						<p>Twój quiz czeka na rozpoczęcie. Uczestnicy są w stanie do niego od teraz dołączyć.</p>
-					{:else if room.status == 'started'}
+					{:else if roomStatus == 'started'}
 						<h2>W trakcie</h2>
 						<p>Twój quiz się rozpoczął i jest teraz rozwiązywany przez uczestników.</p>
-					{:else if room.status == 'closed'}
+					{:else if roomStatus == 'closed'}
 						<h2>Zakończony</h2>
 						<p>Twój quiz się zakończył. Nie da się do niego teraz dołączyć.</p>
 					{/if}
 				</hgroup>
 			</div>
 			<div class="grid">
-				{#if room.status == 'waiting'}
+				{#if roomStatus == 'waiting'}
 					<button
 						class="secondary"
 						onclick={() => {
@@ -112,14 +180,14 @@
 							stopQuiz();
 						}}>Zakończ quiz</button
 					>
-				{:else if room.status == 'started'}
+				{:else if roomStatus == 'started'}
 					<button
 						class="outline red"
 						onclick={() => {
 							stopQuiz();
 						}}>Zakończ quiz</button
 					>
-				{:else if room.status == 'closed'}
+				{:else if roomStatus == 'closed'}
 					<button>Sprawdź wyniki -></button>
 				{/if}
 			</div>
@@ -132,11 +200,11 @@
 				<th>Uczestnik</th>
 				<th>Status</th>
 				<th>Postęp</th>
-				<th>Akcje</th>
+				<th style="width: 10%;">Akcje</th>
 			</tr>
 		</thead>
 		<tbody>
-			{#each room.players as player}
+			{#each players.values() as player}
 				<tr>
 					<th>{player.nickname}</th>
 					{#if player.status == 'waiting'}
@@ -144,13 +212,13 @@
 					{:else if player.status == 'started'}
 						<th>Rozwiązuje</th>
 					{:else if player.status == 'ended'}
-						<th>Zakończył</th>
+						<th>Ukończył</th>
 					{:else if player.status == 'left'}
 						<th>Wyszedł</th>
 					{/if}
-					<th>{player.progress_count}/{room.quiz?.questions.length}</th>
-					<th style="width: 1%;">
-						<button class="slim red outline">Wyproś</button>
+					<th>{player.solutions.size}/{quizLength}</th>
+					<th>
+						<button class="slim red outline" onclick={() => kickPlayer(player.id)}>Wyproś</button>
 					</th>
 				</tr>
 			{/each}

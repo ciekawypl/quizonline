@@ -1,10 +1,10 @@
 import { createHash, randomInt } from "crypto";
 import { getWebSocketManager, webSocketServer, type WSConnection, type WSMessage } from "sveltekit-ws";
 import db from "./db";
+import { SvelteMap } from "svelte/reactivity";
 
 const rooms = new Map<string, Room>()
 const allConnections = new Set<string>()
-
 
 function fastRemove<T>(arr: T[], index: number): void {
     const lastIndex = arr.length - 1;
@@ -17,7 +17,7 @@ function fastRemove<T>(arr: T[], index: number): void {
 async function isHostSecure(connection: WSConnection, quizId: string) {
     const sessionId = connection.metadata?.headers?.cookie.split("; ").find((c: string) => c.startsWith("session=")).split('=')[1]
     if (!sessionId) {
-        sendError(connection, "Nie jestes zalogowany");
+        sendError(connection.id, "Nie jestes zalogowany");
         return false
     }
 
@@ -26,7 +26,7 @@ async function isHostSecure(connection: WSConnection, quizId: string) {
         where: { session_hash: session_hash }
     })
     if (!session) {
-        sendError(connection, "Nie jestes zalogowany - nie ma cie w bazie")
+        sendError(connection.id, "Nie jestes zalogowany - nie ma cie w bazie")
         return false
     }
 
@@ -34,12 +34,12 @@ async function isHostSecure(connection: WSConnection, quizId: string) {
         where: { id: quizId }
     })
     if (!quiz) {
-        sendError(connection, "Nie ma takiego quizu")
+        sendError(connection.id, "Nie ma takiego quizu")
         return false
     }
 
     if (quiz.userId !== session.userId) {
-        sendError(connection, "Brak uprawnien do zasobu")
+        sendError(connection.id, "Brak uprawnien do zasobu")
         return false
     }
 
@@ -51,22 +51,14 @@ function send(connectionId: string, serverMessage: ServerMessage) {
     getWebSocketManager().send(connectionId, wsMessage)
 }
 
-function updateRoom(roomId: string, onlyToHost = false) {
+function sendToEveryoneInRoom(roomId: string, serverMessage: ServerMessage) {
     const room = rooms.get(roomId)
     if (!room) return
 
-    send(room.hostId, {
-        type: "roomState",
-        room: room
-    })
-
-    if (onlyToHost) return;
+    send(room.hostId, serverMessage)
 
     room.players.forEach((player) => {
-        send(player.id, {
-            type: "roomState",
-            room: room
-        })
+        send(player.id, serverMessage)
     })
 }
 
@@ -75,7 +67,7 @@ async function createRoom(connection: WSConnection, quizId: string) {
 
     allConnections.add(connection.id)
 
-    const quizLite: QuizLite = await db.quiz.findUnique({
+    const quizLite: QuizLite | null = await db.quiz.findUnique({
         where: { id: quizId },
         select: {
             id: true,
@@ -106,7 +98,11 @@ async function createRoom(connection: WSConnection, quizId: string) {
 
     rooms.set(roomId, room)
 
-    updateRoom(roomId)
+    send(connection.id, {
+        type: "roomCreated",
+        roomId: roomId,
+        quizLength: quizLite!.questions.length
+    })
 }
 
 async function closeRoom(connection: WSConnection, roomId: string) {
@@ -119,7 +115,9 @@ async function closeRoom(connection: WSConnection, roomId: string) {
 
     room.status = "closed"
 
-    updateRoom(roomId)
+    sendToEveryoneInRoom(roomId, {
+        type: "roomClosed"
+    })
 
     rooms.delete(roomId)
 }
@@ -127,55 +125,82 @@ async function closeRoom(connection: WSConnection, roomId: string) {
 function checkForRoom(connection: WSConnection, roomId: string) {
     const room = rooms.get(roomId)
 
-    if (!room) sendError(connection, "Nie znaleziono pokoju")
+    if (!room) sendError(connection.id, "Nie znaleziono pokoju")
 }
 
 function joinRoom(connection: WSConnection, roomId: string, nickname: string) {
     const room = rooms.get(roomId)
 
     if (!room) {
-        sendError(connection, "Nie znaleziono pokoju")
+        sendError(connection.id, "Nie znaleziono pokoju")
         return
     }
 
     if (room.status == "closed") {
-        sendError(connection, "Quiz już się zakończył")
+        sendError(connection.id, "Quiz już się zakończył")
     }
 
-    room.players.push({
+    const player: Player = {
         id: connection.id,
         nickname: nickname,
         status: "waiting",
-        progress_count: 0
-    })
+        solutions: new SvelteMap<string, string>()
+    }
+
+    room.players.push(player)
     allConnections.add(connection.id)
 
-    updateRoom(roomId)
+    send(connection.id, {
+        type: "joinedRoom",
+        roomStatus: room.status,
+        quiz: room.quiz
+    })
+
+    send(room.hostId, {
+        type: "playerJoined",
+        playerId: player.id,
+        playerStatus: player.status,
+        nickname: player.nickname
+    })
 }
 
 function leaveRoom(connection: WSConnection, roomId: string) {
     const room = rooms.get(roomId)
     if (!room) {
-        sendError(connection, "Nie znaleziono pokoju")
+        sendError(connection.id, "Nie znaleziono pokoju")
         return
     }
 
-    fastRemove(room.players, room.players.findIndex(player => player.id === connection.id))
-    allConnections.delete(connection.id)
+    const player = room.players.find(player => player.id === connection.id)
 
-    updateRoom(roomId)
+    if (!player) return sendError(connection.id, "Gracz nie nalezy do pokoju")
+
+    if (player.status != "ended") {
+        player.status = "left"
+    }
+
+    send(room.hostId, {
+        type: "playerStatusUpdate",
+        playerId: player.id,
+        status: player.status
+    })
 }
 
-function progressUpdate(connection: WSConnection, roomId: string) {
+function progressUpdate(connection: WSConnection, roomId: string, questionId: string, answerId: string) {
     const room = rooms.get(roomId)
     if (!room) return
 
     const player = room.players.find(player => player.id === connection.id)
 
-    if (!player) return sendError(connection, "Gracz nie nalezy do pokoju")
+    if (!player) return sendError(connection.id, "Gracz nie nalezy do pokoju")
 
-    player.progress_count++
-    updateRoom(roomId, true)
+    player.solutions.set(questionId, answerId)
+    send(room.hostId, {
+        type: "playerProgressUpdate",
+        playerId: connection.id,
+        questionId: questionId,
+        answerId: answerId
+    })
 }
 
 function statusUpdate(connection: WSConnection, roomId: string, status: PlayerStatus) {
@@ -184,11 +209,15 @@ function statusUpdate(connection: WSConnection, roomId: string, status: PlayerSt
 
     const player = room.players.find(player => player.id === connection.id)
 
-    if (!player) return sendError(connection, "Gracz nie nalezy do pokoju")
+    if (!player) return sendError(connection.id, "Gracz nie nalezy do pokoju")
 
     player.status = status
 
-    updateRoom(roomId, true)
+    send(room.hostId, {
+        type: "playerStatusUpdate",
+        playerId: player.id,
+        status: status
+    })
 }
 
 async function startRoom(connection: WSConnection, roomId: string) {
@@ -198,13 +227,15 @@ async function startRoom(connection: WSConnection, roomId: string) {
     if (!await isHostSecure(connection, room.quiz!.id)) return
 
     if (room.status != "waiting") {
-        sendError(connection, "Nie mozna teraz rozpoczac quizu")
+        sendError(connection.id, "Nie mozna teraz rozpoczac quizu")
         return
     }
 
     room.status = "started"
 
-    updateRoom(roomId)
+    sendToEveryoneInRoom(roomId, {
+        type: "roomStarted"
+    })
 }
 
 async function stopRoom(connection: WSConnection, roomId: string) {
@@ -214,21 +245,50 @@ async function stopRoom(connection: WSConnection, roomId: string) {
     if (!await isHostSecure(connection, room.quiz!.id)) return
 
     if (room.status == "closed") {
-        sendError(connection, "Nie mozna teraz zatrzymać quizu")
+        sendError(connection.id, "Nie mozna teraz zatrzymać quizu")
         return
     }
 
     room.status = "closed"
 
-    updateRoom(roomId)
+    sendToEveryoneInRoom(roomId, {
+        type: "roomStopped"
+    })
+
+    room.players.forEach(player => {
+        if (player.status == "started") {
+            player.status = "ended"
+            send(room.hostId, {
+                type: "playerStatusUpdate",
+                playerId: player.id,
+                status: player.status
+            })
+        }
+    }) 
 }
 
-function sendError(connection: WSConnection, error: string) {
+async function kickPlayer(connection: WSConnection, roomId: string, playerId: string) {
+    const room = rooms.get(roomId)
+    if (!room) return
+
+    if (!await isHostSecure(connection, room.quiz!.id)) return
+
+    const playerIndex = room.players.findIndex(player => player.id == playerId)
+    const player = room.players[playerIndex]
+
+    if (!player) return sendError(connection.id, "Gracz nie nalezy do pokoju")
+
+    fastRemove(room.players, playerIndex)
+
+    sendError(player.id, "Zostales wyrzucony z pokoju")
+}
+
+function sendError(connectionId: string, error: string) {
     const wsMessage = {
         type: "error",
-        error: error
+        error_msg: error
     } as unknown as WSMessage
-    getWebSocketManager().send(connection.id, wsMessage)
+    getWebSocketManager().send(connectionId, wsMessage)
 }
 
 const ws = webSocketServer({
@@ -266,8 +326,12 @@ const ws = webSocketServer({
                     stopRoom(connection, clientMessage.roomId)
                     break
                 }
+                case "kickPlayer": {
+                    kickPlayer(connection, clientMessage.roomId, clientMessage.playerId)
+                    break
+                }
                 case "progressUpdate": {
-                    progressUpdate(connection, clientMessage.roomId)
+                    progressUpdate(connection, clientMessage.roomId, clientMessage.questionId, clientMessage.answerId)
                     break
                 }
                 case "statusUpdate": {

@@ -6,10 +6,11 @@
 
     let { params, data, form }: PageProps = $props()
 
-	let room : Room = $state()
-	let progress: Record<string, String> = {}
-    let error: String|null = $state(null)
-
+	let roomStatus: RoomStatus = $state()
+	let quiz: QuizLite | null = $state()
+    let error: string = $state("")
+	let progress: Set<string> = new Set<string>()
+	
     let ws: WebSocket | null = null
 
     $effect(() => {
@@ -19,9 +20,18 @@
                 roomId: params.room,
                 nickname: form.validName
             })
-            
         }
     })
+
+	$effect(() =>{
+		if (roomStatus == "started") {
+			send({
+				type: "statusUpdate",
+				roomId: params.room,
+				status: "started"
+			})
+		}
+	})
 
     onMount(() => {
         if (!browser) return;
@@ -39,22 +49,31 @@
 			const message : ServerMessage = JSON.parse(event.data);
 
 			switch (message.type) {
-				case "roomState": {
-					if (!room) {
-						if (!message.room) return
-						shuffle(message.room.quiz!.questions)
-						message.room.quiz?.questions.forEach(element => {
-							shuffle(element.answers)
+				case "joinedRoom": {
+					quiz = message.quiz
+					if (quiz){
+						shuffle(quiz.questions)
+						quiz.questions.forEach(question => {
+							shuffle(question.answers)
 						})
-
-						room = message.room
-					} else {
-						room.status = message.room!.status
 					}
-					break;
+					roomStatus = message.roomStatus
+					break
+				}
+				case "roomClosed": {
+					roomStatus = "closed"
+					break
+				}
+				case "roomStarted": {
+					roomStatus = "started"
+					break
+				}
+				case "roomStopped": {
+					roomStatus = "closed"
+					break
 				}
                 case "error": {
-                    error = message.error
+                    error = message.error_msg
                     break;
                 }
 			}
@@ -80,21 +99,37 @@
 		}
 	}
 
-	function trackProgress(questionId: string, answerId: String) {
-		if (!progress[questionId]) {
-			send({
-				type: "progressUpdate",
-				roomId: room!.id
-			})
+	function trackProgress(questionId: string, answerId: string) {
+		progress.add(questionId)
+		send({
+			type: "progressUpdate",
+			roomId: params.room,
+			questionId: questionId,
+			answerId: answerId
+		})
+	}
+
+	function sendSolution() {
+		if (progress.size !== quiz?.questions.length) {
+			if (!window.confirm("Nie odpowiedziano na wszystkie pytania, czy na pewno chcesz zatwierdzić?")) {
+				return
+			}
 		}
 
-		progress[questionId] = answerId
+		send({
+			type: "statusUpdate",
+			status: "ended",
+			roomId: params.room
+		})
 	}
 </script>
 
-{#if error}
-	{error}
-{:else if !room}
+{#if error !== ''}
+	<center class="fatSeparator">
+		<h1>{error}</h1>
+		<a href="/" role="button" class="secondary">Wróć na strone główną -></a>
+	</center>
+{:else if !roomStatus}
 	<article>
 		<h2>Wpisz swoje imię</h2>
 		<form action="?/setName" method="post" use:enhance>
@@ -113,16 +148,21 @@
 			<button type="submit">Przejdż dalej -></button>
 		</form>
 	</article>
-{:else if room.status == 'waiting'}
-	czekamy
-{:else if room.status == 'closed'}
-	Pokój został zamknięty
-{:else if room.status == 'started'}
+{:else if roomStatus == 'waiting'}
+	<center>
+		<h1>Quiz wkrótce się rozpocznie...</h1>
+	</center>
+{:else if roomStatus == 'closed'}
+	<center>
+		<h1>Quiz został zakończony</h1>
+		<a href="/" role="button" class="secondary">Wróć na strone główną -></a>
+	</center>
+{:else if roomStatus == 'started'}
 	<center style="margin-bottom: 3rem;">
-		<h1>{room.quiz?.title}</h1>
+		<h1>{quiz?.title}</h1>
 	</center>
 
-	{#each room.quiz?.questions as question}
+	{#each quiz?.questions as question}
 		<article>
 			<header>
 				<center class="fatSeparator">
@@ -146,4 +186,6 @@
 		</article>
 		<hr class="fatSeparator" />
 	{/each}
+
+	<button type="submit" onclick={() => sendSolution()}>Zatwierdź odpowiedzi</button>
 {/if}

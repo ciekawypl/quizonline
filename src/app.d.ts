@@ -1,4 +1,7 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
+
+import type { SvelteMap } from "svelte/reactivity";
+
 // for information about these interfaces
 declare global {
 	namespace App {
@@ -9,30 +12,32 @@ declare global {
 		// interface Platform {}
 		interface Locals {
 			user: {
-				userId: String,
+				userId: string,
 				sessionId: Int
 			} | null;
 		}
 	}
 	type FormError = {
-		content: String
-		error: String
+		content: string
+		error: string
 	} | null
 	type Room = {
 		id: string
 		hostId: string
 		players: Player[]
-		quiz: QuizLite
-		status:
+		quiz: QuizLite | null
+		status: RoomStatus
+	} | undefined
+	type RoomStatus =
 		| "waiting"
 		| "started"
 		| "closed"
-	} | undefined
+		| undefined
 	type Player = {
 		id: string
 		nickname: string
 		status: PlayerStatus
-		progress_count: number
+		solutions: SvelteMap<string, string>
 	}
 	type PlayerStatus =
 		| "waiting"
@@ -47,16 +52,24 @@ declare global {
 		| { type: "checkForRoom", roomId: string }
 		| { type: "startRoom", roomId: string }
 		| { type: "stopRoom", roomId: string }
-		| { type: "progressUpdate", roomId: string }
+		| { type: "kickPlayer", roomId: string, playerId: string}
+		| { type: "progressUpdate", roomId: string, questionId: string, answerId: string }
 		| { type: "statusUpdate", roomId: string, status: PlayerStatus }
 	type ServerMessage =
-		| { type: "roomState", room: Room }
-		| { type: "error", error: string }
+		| { type: "roomCreated", roomId: string, quizLength: number }
+		| { type: "roomClosed" }
+		| { type: "roomStarted" }
+		| { type: "roomStopped" }
+		| { type: "joinedRoom", roomStatus: RoomStatus, quiz: QuizLite | null }
+		| { type: "playerJoined", playerId: string, nickname: string, playerStatus: PlayerStatus }
+		| { type: "playerProgressUpdate", playerId: string, questionId: string, answerId: string }
+		| { type: "playerStatusUpdate", playerId: string, status: PlayerStatus }
+		| { type: "error", error_msg: string }
 	type QuizLite = {
 		id: string
 		title: string
 		questions: QuestionLite[]
-	} | null
+	} | undefined
 	type QuestionLite = {
 		id: number
 		content: string
