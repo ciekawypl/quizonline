@@ -5,32 +5,20 @@
 	let { form } : PageProps = $props()
 </script>
 
-<h1>Login page</h1>
-
 <article>
+	<h1>Logowanie</h1>
 	<form action="?/login" method="POST" use:enhance>
 		<fieldset>
 			<label>
 				Login
 				{#if form?.usernameError}
-					<input
-						name="username"
-						type="text"
-						aria-invalid="true"
-						value={form.usernameError.username}
-					/>
+					<input name="username" type="text" aria-invalid="true" value={form.usernameError.username} />
 					<small>{form.usernameError.error}</small>
 				{:else if form?.globalError}
-					<input
-						name="username"
-						type="text"
-						aria-invalid="true"
-						value={form.globalError.username}
-					/>
+					<input name="username" type="text" aria-invalid="true" value={form.globalError.username} />
 					<small>{form.globalError.error}</small>
-					{:else if form?.passwordError}
-					<input name="username" type="text" value="{form.passwordError.username}"/>
-
+				{:else if form?.passwordError}
+					<input name="username" type="text" value={form.passwordError.username} />
 				{:else}
 					<input name="username" type="text" />
 				{/if}
@@ -49,8 +37,8 @@
 			</label>
 		</fieldset>
 		<div class="grid">
-			<button type="submit">Log in</button>
-			<button class="secondary" type="submit" formaction="?/register">Register</button>
+			<button type="submit">Zaloguj</button>
+			<button class="secondary" type="submit" formaction="?/register">Zarejestruj</button>
 		</div>
 	</form>
 </article>

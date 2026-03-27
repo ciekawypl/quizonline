@@ -128,7 +128,7 @@ function checkForRoom(connection: WSConnection, roomId: string) {
     if (!room) sendError(connection.id, "Nie znaleziono pokoju")
 }
 
-function joinRoom(connection: WSConnection, roomId: string, nickname: string) {
+function joinRoom(connection: WSConnection, roomId: string, nickname: string, userId: string | null) {
     const room = rooms.get(roomId)
 
     if (!room) {
@@ -142,6 +142,7 @@ function joinRoom(connection: WSConnection, roomId: string, nickname: string) {
 
     const player: Player = {
         id: connection.id,
+        userId: userId,
         nickname: nickname,
         status: "waiting",
         solutions: new SvelteMap<string, string>()
@@ -203,7 +204,7 @@ function progressUpdate(connection: WSConnection, roomId: string, questionId: st
     })
 }
 
-function statusUpdate(connection: WSConnection, roomId: string, status: PlayerStatus) {
+async function statusUpdate(connection: WSConnection, roomId: string, status: PlayerStatus) {
     const room = rooms.get(roomId)
     if (!room) return
 
@@ -218,6 +219,10 @@ function statusUpdate(connection: WSConnection, roomId: string, status: PlayerSt
         playerId: player.id,
         status: status
     })
+
+    if (status == "ended") {
+        sendScore(player)
+    }
 }
 
 async function startRoom(connection: WSConnection, roomId: string) {
@@ -258,13 +263,72 @@ async function stopRoom(connection: WSConnection, roomId: string) {
     room.players.forEach(player => {
         if (player.status == "started") {
             player.status = "ended"
+            sendScore(player)
             send(room.hostId, {
                 type: "playerStatusUpdate",
                 playerId: player.id,
                 status: player.status
             })
         }
-    }) 
+    })
+
+    await db.$transaction(async (tx) => {
+        const game = await tx.game.create({
+            data: {
+                quizId: room.quiz!.id,
+                players: {
+                    create: room.players.map(p => ({
+                        name: p.nickname,
+                        userId: p.userId
+                    }))
+                }
+            },
+            include: { players: true }
+        });
+
+        const solutionsData = game.players.flatMap((dbPlayer, index) => {
+            const runtimePlayer = room.players[index];
+
+            return Array.from(runtimePlayer.solutions.entries()).map(
+                ([questionId, answerId]) => ({
+                    playerId: dbPlayer.id,
+                    questionId: Number(questionId),
+                    answerId: Number(answerId)
+                })
+            );
+        });
+
+        await tx.solution.createMany({
+            data: solutionsData
+        });
+    });
+}
+
+async function sendScore(player: Player) {
+    const submitted: number[] = []
+    player.solutions.forEach(solution => {
+        submitted.push(Number(solution))
+    })
+
+    const answers = await db.answer.findMany({
+        where: {
+            id: {
+                in: submitted
+            }
+        }
+    })
+
+    let score = 0
+    answers.forEach(answer => {
+        if (answer.isCorrect) {
+            score++
+        }
+    })
+
+    send(player.id, {
+        type: "playerScore",
+        score: score
+    })
 }
 
 async function kickPlayer(connection: WSConnection, roomId: string, playerId: string) {
@@ -311,7 +375,7 @@ const ws = webSocketServer({
                     break
                 }
                 case "joinRoom": {
-                    joinRoom(connection, clientMessage.roomId, clientMessage.nickname)
+                    joinRoom(connection, clientMessage.roomId, clientMessage.nickname, clientMessage.userId)
                     break
                 }
                 case "leaveRoom": {

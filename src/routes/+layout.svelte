@@ -25,7 +25,7 @@
 				</form>
 			{:else}
 				<a href="/login">
-					<button class="outline">Login</button>
+					<button class="outline">Zaloguj</button>
 				</a>
 			{/if}
 		</ul>

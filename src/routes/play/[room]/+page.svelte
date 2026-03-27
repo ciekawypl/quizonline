@@ -3,22 +3,33 @@
 	import { onDestroy, onMount } from "svelte";
 	import type { PageProps } from "./$types";
 	import { enhance } from "$app/forms";
+	import { beforeNavigate } from "$app/navigation";
 
     let { params, data, form }: PageProps = $props()
 
 	let roomStatus: RoomStatus = $state()
 	let quiz: QuizLite | null = $state()
+	let score: number | undefined = $state()
     let error: string = $state("")
 	let progress: Set<string> = new Set<string>()
 	
     let ws: WebSocket | null = null
 
+	beforeNavigate(({ cancel }) => {
+		if (roomStatus == "started") {
+			if (!score && !confirm('Nie zatwierdziłeś. Wyniki mogą nie być zapisane. Czy na pewno chcesz wyjść?')) {
+				cancel();
+			}
+		}
+  	});
+	
     $effect(() => {
         if(form?.validName) {
             send({
                 type:"joinRoom",
                 roomId: params.room,
-                nickname: form.validName
+                nickname: form.validName,
+				userId: data.user?.userId ?? null
             })
         }
     })
@@ -70,6 +81,10 @@
 				}
 				case "roomStopped": {
 					roomStatus = "closed"
+					break
+				}
+				case "playerScore": {
+					score = message.score
 					break
 				}
                 case "error": {
@@ -124,7 +139,18 @@
 	}
 </script>
 
-{#if error !== ''}
+{#if score !== undefined}
+	<center class="fatSeparator">
+		<hgroup>
+			<h1>Zdobyto {(score * 100) / quiz!.questions.length}%</h1>
+			<h2>Odpowiedziano poprawnie na {score} z {quiz?.questions.length} pytań</h2>
+		</hgroup>
+		{#if data.user}
+			<p>Statystyki zaktualizują się po zakończeniu quizu</p>
+		{/if}
+		<a href="/" role="button" class="secondary">Wróć na strone główną -></a>
+	</center>
+{:else if error !== ''}
 	<center class="fatSeparator">
 		<h1>{error}</h1>
 		<a href="/" role="button" class="secondary">Wróć na strone główną -></a>
@@ -149,11 +175,11 @@
 		</form>
 	</article>
 {:else if roomStatus == 'waiting'}
-	<center>
+	<center class="fatSeparator">
 		<h1>Quiz wkrótce się rozpocznie...</h1>
 	</center>
 {:else if roomStatus == 'closed'}
-	<center>
+	<center class="fatSeparator">
 		<h1>Quiz został zakończony</h1>
 		<a href="/" role="button" class="secondary">Wróć na strone główną -></a>
 	</center>

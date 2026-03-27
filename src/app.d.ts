@@ -35,6 +35,7 @@ declare global {
 		| undefined
 	type Player = {
 		id: string
+		userId: string | null
 		nickname: string
 		status: PlayerStatus
 		solutions: SvelteMap<string, string>
@@ -47,7 +48,7 @@ declare global {
 	type ClientMessage =
 		| { type: "createRoom", quizId: string }
 		| { type: "closeRoom", roomId: string }
-		| { type: "joinRoom", roomId: string, nickname: string }
+		| { type: "joinRoom", roomId: string, nickname: string, userId: string | null }
 		| { type: "leaveRoom", roomId: string }
 		| { type: "checkForRoom", roomId: string }
 		| { type: "startRoom", roomId: string }
@@ -64,6 +65,7 @@ declare global {
 		| { type: "playerJoined", playerId: string, nickname: string, playerStatus: PlayerStatus }
 		| { type: "playerProgressUpdate", playerId: string, questionId: string, answerId: string }
 		| { type: "playerStatusUpdate", playerId: string, status: PlayerStatus }
+		| { type: "playerScore", score: int }
 		| { type: "error", error_msg: string }
 	type QuizLite = {
 		id: string

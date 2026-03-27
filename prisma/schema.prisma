@@ -11,42 +11,90 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  username      String    @unique
+  id            String @id @default(uuid())
+  username      String @unique
   password_hash String
-  quizzes       Quiz[]
-  sessions      Session[]
+
+  quizzes  Quiz[]
+  sessions Session[]
+  players  Player[]
 }
 
 model Session {
   id           Int    @id @default(autoincrement())
   session_hash String @unique
-  user         User   @relation(fields: [userId], references: [id])
-  userId       String
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
 }
 
 model Quiz {
-  id          String     @id @default(uuid())
+  id          String   @id @default(uuid())
   title       String
   description String?
-  createdAt   DateTime   @default(now())
-  user        User       @relation(fields: [userId], references: [id])
-  userId      String
-  questions   Question[]
+  createdAt   DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  questions Question[]
+  games     Game[]
 }
 
 model Question {
-  id      Int      @id @default(autoincrement())
+  id      Int    @id @default(autoincrement())
   content String
-  quiz    Quiz     @relation(fields: [quizId], references: [id])
-  quizId  String
-  answers Answer[]
+
+  quiz   Quiz   @relation(fields: [quizId], references: [id])
+  quizId String
+
+  answers   Answer[]
+  solutions Solution[]
 }
 
 model Answer {
-  id         Int      @id @default(autoincrement())
-  content    String
-  isCorrect  Boolean  @default(false)
+  id        Int     @id @default(autoincrement())
+  content   String
+  isCorrect Boolean @default(false)
+
   question   Question @relation(fields: [questionId], references: [id])
   questionId Int
+
+  solutions Solution[]
+}
+
+model Game {
+  id      Int      @id @default(autoincrement())
+  endedAt DateTime @default(now())
+
+  quiz   Quiz   @relation(fields: [quizId], references: [id])
+  quizId String
+
+  players Player[]
+}
+
+model Player {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  game   Game @relation(fields: [gameId], references: [id])
+  gameId Int
+
+  solutions Solution[]
+}
+
+model Solution {
+  id Int @id @default(autoincrement())
+
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId Int
+
+  answer   Answer @relation(fields: [answerId], references: [id])
+  answerId Int
+
+  player   Player @relation(fields: [playerId], references: [id])
+  playerId Int
 }

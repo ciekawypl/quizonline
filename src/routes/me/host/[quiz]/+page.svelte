@@ -53,6 +53,7 @@
 				case "playerJoined": {
 					const player: Player = {
 						id: message.playerId,
+						userId: null,
 						nickname: message.nickname,
 						status: message.playerStatus,
 						solutions: new SvelteMap()
