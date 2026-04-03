@@ -60,7 +60,7 @@ declare global {
 		| { type: "roomCreated", roomId: string, quizLength: number }
 		| { type: "roomClosed" }
 		| { type: "roomStarted" }
-		| { type: "roomStopped" }
+		| { type: "roomStopped", gameId: string | undefined }
 		| { type: "joinedRoom", roomStatus: RoomStatus, quiz: QuizLite | null }
 		| { type: "playerJoined", playerId: string, nickname: string, playerStatus: PlayerStatus }
 		| { type: "playerProgressUpdate", playerId: string, questionId: string, answerId: string }

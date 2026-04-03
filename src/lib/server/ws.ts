@@ -256,10 +256,6 @@ async function stopRoom(connection: WSConnection, roomId: string) {
 
     room.status = "closed"
 
-    sendToEveryoneInRoom(roomId, {
-        type: "roomStopped"
-    })
-
     room.players.forEach(player => {
         if (player.status == "started") {
             player.status = "ended"
@@ -272,36 +268,47 @@ async function stopRoom(connection: WSConnection, roomId: string) {
         }
     })
 
-    await db.$transaction(async (tx) => {
-        const game = await tx.game.create({
-            data: {
-                quizId: room.quiz!.id,
-                players: {
-                    create: room.players.map(p => ({
-                        name: p.nickname,
-                        userId: p.userId
-                    }))
-                }
-            },
-            include: { players: true }
-        });
+    let gameId
 
-        const solutionsData = game.players.flatMap((dbPlayer, index) => {
-            const runtimePlayer = room.players[index];
+    if (room.players.length != 0) {
+        await db.$transaction(async (tx) => {
+            const game = await tx.game.create({
+                data: {
+                    quizId: room.quiz!.id,
+                    players: {
+                        create: room.players.map(p => ({
+                            name: p.nickname,
+                            userId: p.userId
+                        }))
+                    }
+                },
+                include: { players: true }
+            });
 
-            return Array.from(runtimePlayer.solutions.entries()).map(
-                ([questionId, answerId]) => ({
-                    playerId: dbPlayer.id,
-                    questionId: Number(questionId),
-                    answerId: Number(answerId)
-                })
-            );
-        });
+            gameId = String(game.id)
 
-        await tx.solution.createMany({
-            data: solutionsData
+            const solutionsData = game.players.flatMap((dbPlayer, index) => {
+                const runtimePlayer = room.players[index];
+
+                return Array.from(runtimePlayer.solutions.entries()).map(
+                    ([questionId, answerId]) => ({
+                        playerId: dbPlayer.id,
+                        questionId: Number(questionId),
+                        answerId: Number(answerId)
+                    })
+                );
+            });
+
+            await tx.solution.createMany({
+                data: solutionsData
+            });
         });
-    });
+    }
+
+    sendToEveryoneInRoom(roomId, {
+        type: "roomStopped",
+        gameId: gameId
+    })
 }
 
 async function sendScore(player: Player) {

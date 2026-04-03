@@ -10,6 +10,7 @@
     let ws: WebSocket | null = null
 
 	let roomId: string | undefined = $state()
+	let gameId: string | undefined = $state()
 	let roomStatus: RoomStatus = $state()
 	let players: Player[] = $state([])
 	let quizLength = $state()
@@ -48,6 +49,7 @@
 				}
 				case "roomStopped" : {
 					roomStatus = "closed"
+					gameId = message.gameId
 					break
 				}
 				case "playerJoined": {
@@ -189,7 +191,7 @@
 						}}>Zakończ quiz</button
 					>
 				{:else if roomStatus == 'closed'}
-					<button>Sprawdź wyniki -></button>
+					<a role="button" href="/me/stats{gameId ? '/hosted/' + gameId : ''}">Sprawdź wyniki -></a>
 				{/if}
 			</div>
 		</article>

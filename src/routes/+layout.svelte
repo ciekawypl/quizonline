@@ -16,6 +16,7 @@
 			<li><a href="/"><strong>Quizonline</strong></a></li>
 			{#if user}
 				<li><a href="/me/quizzes">Twoje quizy</a></li>
+				<li><a href="/me/stats">Statystyki</a></li>
 			{/if}
 		</ul>
 		<ul>

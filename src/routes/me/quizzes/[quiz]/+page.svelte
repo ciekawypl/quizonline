@@ -1,10 +1,36 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { slide } from 'svelte/transition';
     import type { PageProps } from './$types';
+	import { beforeNavigate } from '$app/navigation';
 
     let { data }: PageProps = $props();
-</script>
+	let dane = $derived(data)
 
+	beforeNavigate(({ cancel }) => {
+		if (dane.questions.some(q => q.answers.every(a => !a.isCorrect))
+			&& !confirm('Nie ustawiono poprawnej opdowiedzi dla kazdego pytania. Czy napewno chcesz wyjść?')) {
+			cancel();
+		}
+	});
+
+	function handle(questionId: number, answerId: number) {
+		dane = {
+			...dane,
+			questions: dane.questions.map((q) =>
+				q.id === questionId
+					? {
+							...q,
+							answers: q.answers.map((a) => ({
+								...a,
+								isCorrect: a.id === answerId
+							}))
+					}
+					: q
+			)
+		};
+	}
+</script>
 
 <article>
 	<h1>Edytuj Quiz</h1>
@@ -16,19 +42,19 @@
 		}}
 		onchange={(e) => e.currentTarget.requestSubmit()}
 	>
-		<input type="hidden" name="quizId" value={data.id} />
-		<input name="title" type="text" placeholder="Tytuł quizu" value={data.title} />
-		<textarea name="description" placeholder="Opis quizu">{data.description}</textarea>
+		<input type="hidden" name="quizId" value={dane.id} />
+		<input name="title" type="text" placeholder="Tytuł quizu" value={dane.title} />
+		<textarea name="description" placeholder="Opis quizu">{dane.description}</textarea>
 	</form>
 	<form method="post" action="?/deleteQuiz">
-		<input type="hidden" name="quizId" value={data.id} />
+		<input type="hidden" name="quizId" value={dane.id} />
 		<button class="outline red" type="submit">Usuń quiz</button>
 	</form>
 </article>
 
 <hr class="fatSeparator" />
 
-{#each data.questions as question}
+{#each dane.questions as question}
 	<article>
 		<header>
 			<form
@@ -53,6 +79,12 @@
 			</form>
 		</header>
 
+		{#if question.answers.every((a) => !a.isCorrect)}
+			<div class="centered" style="margin: 1em" transition:slide>
+				<small class="red"> To pytanie nie ma ustawionej poprawnej odpowiedzi. </small>
+			</div>
+		{/if}
+
 		<div class="grid dual">
 			{#each question.answers as answer}
 				<form
@@ -68,9 +100,9 @@
 					<fieldset role="group">
 						<div class="centerSwitch">
 							{#if answer.isCorrect}
-								<input name="isCorrect" type="checkbox" checked />
+								<input name="isCorrect" type="checkbox" checked disabled />
 							{:else}
-								<input name="isCorrect" type="checkbox" />
+								<input name="isCorrect" type="checkbox" onchange={() => handle(question.id, answer.id)} />
 							{/if}
 						</div>
 						<textarea

@@ -17,7 +17,7 @@
 
 	beforeNavigate(({ cancel }) => {
 		if (roomStatus == "started") {
-			if (!score && !confirm('Nie zatwierdziłeś. Wyniki mogą nie być zapisane. Czy na pewno chcesz wyjść?')) {
+			if (score === undefined && !confirm('Nie zatwierdziłeś. Wyniki mogą nie być zapisane. Czy na pewno chcesz wyjść?')) {
 				cancel();
 			}
 		}

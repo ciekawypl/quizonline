@@ -207,7 +207,6 @@ export const actions: Actions = {
     },
 
     editAnswer: async ({ request, locals }) => {
-
         const data = await request.formData()
         const answerId = data.get('answerId')?.toString().trim()
         const newContent = data.get('newContent')?.toString().trim()
@@ -232,6 +231,15 @@ export const actions: Actions = {
         if (!answer) return fail(404, "Zasób nie istnieje")
 
         if (answer.question.quiz.userId != locals.user?.userId) return fail(403, "Brak uprawnień do zasobu")
+
+        await db.answer.updateMany({
+            where: {
+                questionId: answer.questionId
+            },
+            data: {
+                isCorrect: false
+            }
+        })
 
         await db.answer.update({
             where: { id: Number(answerId) },
