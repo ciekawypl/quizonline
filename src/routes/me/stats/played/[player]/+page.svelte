@@ -30,7 +30,7 @@
 		<Pie data={pie_data} options={{ plugins: { legend: { position: 'bottom' } } }} />
 	</div>
 	<div>
-		{#if data.solutions.filter((solution) => solution.is_correct)}
+		{#if data.solutions.filter((solution) => solution.is_correct).length != 0}
 			<table class="bigMargin">
 				<thead>
 					<tr>
@@ -48,7 +48,7 @@
 			</table>
 		{/if}
 
-		{#if data.solutions.filter((solution) => !solution.is_correct && solution.answer_content != undefined)}
+		{#if data.solutions.filter((solution) => !solution.is_correct && solution.answer_content != undefined).length != 0}
 			<table class="bigMargin">
 				<thead>
 					<tr>
@@ -66,7 +66,7 @@
 			</table>
 		{/if}
 
-		{#if data.solutions.filter((solution) => solution.answer_content == undefined)}
+		{#if data.solutions.filter((solution) => solution.answer_content == undefined).length != 0}
 			<table class="bigMargin">
 				<thead>
 					<tr>
